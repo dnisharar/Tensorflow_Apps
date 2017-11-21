@@ -2,24 +2,24 @@
 """
 Created on Sun Jul 16 21:14:28 2017
 
-@author: Y9CK3
+@author: T
 """
 import tensorflow as tf
 import keras
 from keras.wrappers.scikit_learn import KerasClassifier
-#from keras.wrappers.scikit_learn import KerasClassifier
+from keras.wrappers.scikit_learn import KerasClassifier
 #from keras.wrappers.scikit_learn import GridsearchCV
-#from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 import numpy as np
 import pandas as pd
-#from sklearn.svm import SVR
-#from sklearn import grid_search, linear_model
-#from sklearn import preprocessing
-#import matplotlib.pyplot as plt
+from sklearn.svm import SVR
+from sklearn import grid_search, linear_model
+from sklearn import preprocessing
+import matplotlib.pyplot as plt
 
-#from sklearn.neural_network import  MLPRegressor
+from sklearn.neural_network import  MLPRegressor
 
-###import spark
+import spark
 #from spark import spark_sklearn
 #from spark_sklearn import GridSearchCV, SVR
 
@@ -27,7 +27,8 @@ import pandas as pd
 window = 10
 
 df = pd.read_csv("NDX.csv")
-#print(df.head())
+print(df.head())
+print("===================")
 print(df.tail())
 
 
@@ -41,10 +42,10 @@ for k in range(window, len(df2)):
         df2[k,j] = df1[k+j,1]
 
 
-#print(df2[1:20,:])
+print(df2[1:20,:])
 print(df2[len(df2)-10:len(df2),:])
-#print(df.head())
-#print(df.tail())
+print(df.head())
+print(df.tail())
 
 
 df['X0'] = df['CLOSE'].shift(-window)
@@ -66,13 +67,13 @@ data = data[:-window]
 le = len(data)-window
 le = len(data)- 50
 data = data[-le:]
-#print(data.head(25))
-#print(data.tail(25))
+print(data.head(25))
+print(data.tail(25))
 
 
 X = data.drop(data.columns[[0, 1, 2]], axis=1)
-#print(X.head(25))
-#print(X.tail(25))
+print(X.head(25))
+print(X.tail(25))
 
 y = np.array(data['X0'])
 
@@ -91,9 +92,10 @@ y_predSVR =np.ones(((wid-1),1),dtype=float)
 y_predMLP =np.ones(((wid-1),1),dtype=float) 
 X_test[[0]] = X.iloc[horizon1 + 1]
 
+
 ''' OLS '''
 
-'''
+
 OLS_model = linear_model.LinearRegression()
 
 # Train the model using the training sets
@@ -106,14 +108,14 @@ for k in range(1,(wid-1)):
     X_test[k,9] = y_predOLS[k] 
 
 
-'''
+
 y_test = y_test.reshape((wid-1),1) 
-#y_test - y_predOLS
+print(y_test - y_predOLS)
 
 
 
 ''' SVR '''
-'''
+
 #Model Optimization 
 #parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10, 100, 1000], 'gamma': np.logspace(-2, 1, 4,base=2),'epsilon':np.logspace(-2,1,4,base=10)} 
 parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10,100,1000], 'gamma': np.logspace(-2, 1, 10,base=2),'epsilon':np.logspace(-2,1,10,base=10)}
@@ -146,7 +148,7 @@ len(y_predSVR)
 dif = y_test - y_predSVR
 print(dif)
 
-'''
+
 
 
 
@@ -197,7 +199,7 @@ print(output)
 
 
 ### TENSORFLOW 
-
+'''
 print('=============================================================================================================>')
 
 mydf2 = tf.Variable('float', [1323,13])
@@ -210,17 +212,6 @@ y = mydf2[:,-1]
 
 print(X)
 print(y)
-
-
-
-
-
-
-
-
-
-
-
-
+'''
 
 
