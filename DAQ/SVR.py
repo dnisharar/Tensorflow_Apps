@@ -24,194 +24,216 @@ import spark
 #from spark_sklearn import GridSearchCV, SVR
 
 
-window = 10
+d1 = pd.read_csv('NDX2.csv')
+forward = 5
+future = 5
+lag = 15
+batch_size =  15
 
-df = pd.read_csv("NDX.csv")
-print(df.head())
-print("===================")
-print(df.tail())
-
-
-df = df[['DATE','CLOSE']]
-df1 = np.array(df)
-
-
-df2 = np.ones((len(df1)-window,window),dtype = np.float64)
-for k in range(window, len(df2)):
-    for j in range(window):
-        df2[k,j] = df1[k+j,1]
+X = np.array(d1)
+X = X[len(X)-515:,1]
+print(X.shape)
 
 
-print(df2[1:20,:])
-print(df2[len(df2)-10:len(df2),:])
-print(df.head())
-print(df.tail())
+def to_supervised(data, lag):
+    df = pd.DataFrame(data)
+    columns = [df.shift(lag + 1 -i) for i in range(1, lag+1)]
+    columns.append(df)
+    df = pd.concat(columns, axis =1)
+    df.dropna(inplace =  True)
+    return df
 
+df = to_supervised(X, lag)
+df = np.array(df)
+print(df.shape)
+n1 = len(df) - forward
+print(n1)
 
-df['X0'] = df['CLOSE'].shift(-window)
-df['X1'] = df['CLOSE'].shift(-(window-1))
-df['X2'] = df['CLOSE'].shift(-(window-2))
-df['X3'] = df['CLOSE'].shift(-(window-3))
-df['X4'] = df['CLOSE'].shift(-(window-4))
-df['X5'] = df['CLOSE'].shift(-(window-5))
-df['X6'] = df['CLOSE'].shift(-(window-6))
-df['X7'] = df['CLOSE'].shift(-(window-7))
-df['X8'] = df['CLOSE'].shift(-(window-8))
-df['X9'] = df['CLOSE'].shift(-(window-9))
-df['X10'] = df['CLOSE'].shift(-(window-10))
+train, test = df[:n1,:], df[n1:,:]
+X_train, y_train = train[:,:-1], train[:,-1]
+print(X_train.shape)
+print(y_train.shape)
+X_test, y_test = test[:,:-1], test[:,-1]
+print(X_test.shape)
+print(y_test.shape)
 
+test = np.ones((lag,lag),dtype = float)
+test[:future,:]= X_test
+print(test.shape)
 
-data = df[['DATE','CLOSE','X0','X1','X2','X3','X4','X5','X6','X7','X8','X9','X10']]
+test2 = np.ones((forward+future, lag),dtype = float)
+test2[0,:] = df[(n1-1),1:]
+print(test2.shape)
+print(test2[0,:])
+print(test2[1,:])
+#print(test2)
 
-data = data[:-window]
-le = len(data)-window
-le = len(data)- 50
-data = data[-le:]
-print(data.head(25))
-print(data.tail(25))
+leng = forward #+ future 
+y_predOLS =np.ones((leng,1),dtype=float) 
+y_predSVR =np.ones((leng,1),dtype=float) 
+y_predMLP =np.ones((leng,1),dtype=float) 
 
-
-X = data.drop(data.columns[[0, 1, 2]], axis=1)
-print(X.head(25))
-print(X.tail(25))
-
-y = np.array(data['X0'])
-
-
-wid = 4
-horizon2 = len(X)
-horizon1 = horizon2 - wid
-X_train = np.array (X)
-X_train = X_train[:(horizon1+1),:]
-y_train = y[:(horizon1+1)]
-y_test = y[(horizon1+1):]
- 
-X_test = np.ones((wid,10),dtype=float) 
-y_predOLS =np.ones(((wid-1),1),dtype=float) 
-y_predSVR =np.ones(((wid-1),1),dtype=float) 
-y_predMLP =np.ones(((wid-1),1),dtype=float) 
-X_test[[0]] = X.iloc[horizon1 + 1]
-
-
-''' OLS '''
-
+### OLS 
 
 OLS_model = linear_model.LinearRegression()
 
 # Train the model using the training sets
 OLS_model.fit(X_train,y_train) 
-y_predOLS[0] = OLS_model.predict(X_test[[0]])
+y_predOLS[0] = OLS_model.predict(test2[0,:].reshape(-1,lag))
+print(y_predOLS)
 
-for k in range(1,(wid-1)):
-    y_predOLS[k]     = OLS_model.predict(X_test[[k-1]])
-    X_test[k,:8] = X_test[(k-1),:8] 
-    X_test[k,9] = y_predOLS[k] 
+for k in range(1,leng):
+    y_predOLS[k]     = OLS_model.predict(test2[k-1,:].reshape(-1,lag))
+    test2[k,:(lag-1)] = test2[k-1,1:] 
+    test2[k,(lag-1)] = y_predOLS[k] 
 
-
-
-y_test = y_test.reshape((wid-1),1) 
+y_test = y_test.reshape(leng,1) 
 print(y_test - y_predOLS)
 
-
-
-''' SVR '''
-
+###SVR 
+'''
+print("++++++++++++ SVR using scikit-learn +++++++++++++++++++++++++++++)
 #Model Optimization 
 #parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10, 100, 1000], 'gamma': np.logspace(-2, 1, 4,base=2),'epsilon':np.logspace(-2,1,4,base=10)} 
-parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10,100,1000], 'gamma': np.logspace(-2, 1, 10,base=2),'epsilon':np.logspace(-2,1,10,base=10)}
+parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10], 'gamma': np.logspace(-2, 1, 2,base=2),'epsilon':np.logspace(-2,1,2,base=10)}
 SVR_model     = SVR()
 grid           = GridSearchCV(SVR_model, parameters)
 SVR_model = grid.fit(X_train, y_train)
+#SVR_model = SVR_model.fit(X_train, y_train)
+y_predSVR[0]     = SVR_model.predict(test2[0,:].reshape(-1,lag)) 
 
-
-#SVR_model_train = grid.fit(X, y) 
-#SVR_model_optimized     = SVR(kernel = grid.best_params_["kernel"], C=grid.best_params_["C"], gamma=grid.best_params_["gamma"],epsilon = grid.best_params_["epsilon"]) 
-#SVR_model_optimized.fit(X, y)
-
-  
-#y_predSVR[0]     = SVR_model_optimized.predict(X_test.iloc[[0]]) 
-
-
-#SVR_model = SVR_model.fit(X_train, y_train) 
-
-y_predSVR[0]     = SVR_model.predict(X_test[[0]]) 
+#SVR_model_train = grid.fit(X_train, y_train) 
  
-for k in range(1,(wid-1)):
-    y_predSVR[k]     = SVR_model.predict(X_test[[k-1]])
-    X_test[k,:8] = X_test[(k-1),:8] 
-    X_test[k,9] = y_predSVR[k] 
+#SVR_model_optimized     = SVR(kernel = grid.best_params_["kernel"], C=grid.best_params_["C"], gamma=grid.best_params_["gamma"],epsilon = grid.best_params_["epsilon"]) 
+#SVR_model_optimized.fit(X_train, y_train)
+#y_predSVR[0]     = SVR_model_optimized.predict(test2[0,:].reshape(-1,lag)) 
+
+ 
+for k in range(1,leng):
+    y_predSVR[k]     = SVR_model.predict(test2[k-1,:].reshape(-1,lag))
+    test2[k,:(lag-1)] = test2[k-1,1:] 
+    test2[k,(lag-1)] = y_predSVR[k] 
      
-len(y_test)
-len(y_predSVR)
-#y_test = y_test.reshape(3,1) 
 
 dif = y_test - y_predSVR
 print(dif)
 
-
-
-
-
-
-
+'''
 
 
 ''' NEURAL NETWORK '''
-'''
-MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1)
+print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
+MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(100, 100, 100), random_state=1)
 MLP_model.fit(X_train, y_train)
 
-y_predMLP[0] = MLP_model.predict(X_test[[0]])
+y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
 
-for k in range(1,(wid-1)):
-    y_predMLP[k]     = MLP_model.predict(X_test[[k-1]])
-    X_test[k,:8] = X_test[(k-1),:8] 
-    X_test[k,9] = y_predMLP[k] 
-
-#y_test = y_test.reshape((wid-1),1)
-
+for k in range(1,leng):
+    y_predMLP[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
+    test2[k,:(lag-1)] = test2[k-1,1:] 
+    test2[k,(lag-1)] = y_predMLP[k] 
  
-y_test - y_predOLS
-y_test - y_predSVR
-y_test - y_predMLP
 
-'''
-
+print(y_test - y_predMLP)
 
 
 '''
-t = np.linspace(1,wid,3)
+t = np.linspace(1,leng,leng)
+print(t)
 plt.plot(t,y_test)
 plt.show()
 
-lines = plt.plot(t, y_test, t, y_predSVR)
+lines = plt.plot(t, y_test, t, y_predMLP)
 plt.show()
 
-output = pd.DataFrame({'y': y_test, 'y_SVR': y_predSVR})
-output['diff'] = output['y'] - output['y_SVR']
-
-print(output)
-
 '''
-
- 
-''' https://www.hackerearth.com/practice/machine-learning/data-manipulation-visualisation-r-python/tutorial-data-manipulation-numpy-pandas-python/tutorial/ '''
-
 
 ### TENSORFLOW 
-'''
-print('=============================================================================================================>')
 
-mydf2 = tf.Variable('float', [1323,13])
-mydf2 = tf.Variable(df)
-print(mydf2)
-print(mydf2.shape)
+print('++++++++++++++++++ MLP using Tensorflow ++++++++++++++++++++++++++++++++')
 
-X = mydf2[:,0:-1]
-y = mydf2[:,-1]
 
-print(X)
-print(y)
-'''
+# Create and train a tensorflow model of a neural network
+def create_train_model(hidden_nodes, num_iters):
 
+    # Reset the graph
+    tf.reset_default_graph()
+
+    # Placeholders for input and output data
+    X = tf.placeholder(shape=(495, 15), dtype=tf.float64, name='X')
+    y = tf.placeholder(shape=(495, -1), dtype=tf.float64, name='y')
+
+    # Variables for two group of weights between the three layers of the network
+    W1 = tf.Variable(np.random.rand(15, hidden_nodes), dtype=tf.float64)
+    W2 = tf.Variable(np.random.rand(hidden_nodes, 1), dtype=tf.float64)
+
+    # Create the neural net graph
+    A1 = tf.sigmoid(tf.matmul(X, W1))
+    y_est = tf.sigmoid(tf.matmul(A1, W2))
+
+    # Define a loss function
+    deltas = tf.square(y_est - y)
+    loss = tf.reduce_sum(deltas)
+
+    # Define a train operation to minimize the loss
+    optimizer = tf.train.GradientDescentOptimizer(0.005)
+    train = optimizer.minimize(loss)
+
+    # Initialize variables and run session
+    init = tf.global_variables_initializer()
+    sess = tf.Session()
+    sess.run(init)
+
+    # Go through num_iters iterations
+    for i in range(num_iters):
+        sess.run(train, feed_dict={X: X_train, y: y_train})
+        loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
+        weights1 = sess.run(W1)
+        weights2 = sess.run(W2)
+
+    print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[hidden_nodes][-1]))
+    sess.close()
+    return weights1, weights2
+
+
+# Plot the loss function over iterations
+hidden_nodes = 50 #[5, 10, 20]  
+loss_plot = {50: []} #, 10: [], 20: []}  
+weights1 = {50: None} #, 10: None, 20: None}  
+weights2 = {50: None} #, 10: None, 20: None}  
+num_iters = 200
+
+#plt.figure(figsize=(12,8))  
+#for hidden_nodes in num_hidden_nodes:  
+weights1[hidden_nodes], weights2[hidden_nodes] = create_train_model(hidden_nodes, num_iters)
+plt.plot(range(num_iters), loss_plot[hidden_nodes], label="nn: in-%d-out" % hidden_nodes)
+
+plt.xlabel('Iteration', fontsize=12)  
+plt.ylabel('Loss', fontsize=12)  
+plt.legend(fontsize=12)  
+plt.show()
+
+
+# Evaluate models on the test set
+X = X_test
+y = y_test
+
+#for hidden_nodes in num_hidden_nodes:
+    # Forward propagation
+W1 = tf.Variable(weights1[hidden_nodes])
+W2 = tf.Variable(weights2[hidden_nodes])
+A1 = tf.sigmoid(tf.matmul(X, W1))
+y_est = tf.sigmoid(tf.matmul(A1, W2))
+
+    # Calculate the predicted outputs
+init = tf.global_variables_initializer()
+with tf.Session() as sess:
+    sess.run(init)
+    y_est_np = sess.run(y_est, feed_dict={X: X_test, y: y_test})
+
+    # Calculate the prediction accuracy
+correct = [estimate.argmax(axis=0) == target.argmax(axis=0) 
+            for estimate, target in zip(y_est_np, ytest.as_matrix())]
+accuracy = 100 * sum(correct) / len(correct)
+print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
 
