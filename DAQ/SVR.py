@@ -123,7 +123,7 @@ print(dif)
 
 ''' NEURAL NETWORK '''
 print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
-MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(100, 100, 100), random_state=1)
+MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(400, 400, 400), random_state=1)
 MLP_model.fit(X_train, y_train)
 
 y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
@@ -152,7 +152,6 @@ plt.show()
 
 print('++++++++++++++++++ MLP using Tensorflow ++++++++++++++++++++++++++++++++')
 
-
 # Create and train a tensorflow model of a neural network
 def create_train_model(hidden_nodes, num_iters):
 
@@ -161,7 +160,7 @@ def create_train_model(hidden_nodes, num_iters):
 
     # Placeholders for input and output data
     X = tf.placeholder(shape=(495, 15), dtype=tf.float64, name='X')
-    y = tf.placeholder(shape=(495, -1), dtype=tf.float64, name='y')
+    y = tf.placeholder(shape=(495, ), dtype=tf.float64, name='y')
 
     # Variables for two group of weights between the three layers of the network
     W1 = tf.Variable(np.random.rand(15, hidden_nodes), dtype=tf.float64)
@@ -187,7 +186,8 @@ def create_train_model(hidden_nodes, num_iters):
     # Go through num_iters iterations
     for i in range(num_iters):
         sess.run(train, feed_dict={X: X_train, y: y_train})
-        loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
+        #loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
+        loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train, y: y_train}))
         weights1 = sess.run(W1)
         weights2 = sess.run(W2)
 
@@ -201,7 +201,8 @@ hidden_nodes = 50 #[5, 10, 20]
 loss_plot = {50: []} #, 10: [], 20: []}  
 weights1 = {50: None} #, 10: None, 20: None}  
 weights2 = {50: None} #, 10: None, 20: None}  
-num_iters = 200
+num_iters = 2000
+
 
 #plt.figure(figsize=(12,8))  
 #for hidden_nodes in num_hidden_nodes:  
@@ -223,8 +224,12 @@ y = y_test
 W1 = tf.Variable(weights1[hidden_nodes])
 W2 = tf.Variable(weights2[hidden_nodes])
 A1 = tf.sigmoid(tf.matmul(X, W1))
+#A1 = tf.nn.relu(tf.matmul(X, W1))
 y_est = tf.sigmoid(tf.matmul(A1, W2))
+#y_est = tf.nn.relu(tf.matmul(A1, W2))
+print(y_est)
 
+'''
     # Calculate the predicted outputs
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
@@ -237,3 +242,4 @@ correct = [estimate.argmax(axis=0) == target.argmax(axis=0)
 accuracy = 100 * sum(correct) / len(correct)
 print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
 
+'''
