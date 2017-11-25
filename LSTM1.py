@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import math
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
-#from sklearn.preprocessing import MinMaxScaler
-#from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 from keras.layers import GRU
 from keras.layers import SimpleRNN
 from keras.layers import Bidirectional
