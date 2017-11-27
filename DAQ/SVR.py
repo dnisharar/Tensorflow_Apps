@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+
+#!/usr/bin/python2
 """
 Created on Sun Jul 16 21:14:28 2017
 
@@ -61,7 +62,14 @@ print(y_test.shape)
 ##test[:future,:]= X_test
 ##print(test.shape)
 
-test2 = np.ones((forward+future, lag),dtype = float)
+test2_ = np.ones((forward+future, lag),dtype = float)
+t1 = test2_.shape[0]
+print(t1)
+t2 = test2_.shape[1]
+print(t2)
+test2 = tf.placeholder(tf.float64, [t1, t2])
+test2 = test2_
+
 test2[0,:] = df[(n1-1),1:]
 print(test2.shape)
 print(test2[0,:])
@@ -74,8 +82,13 @@ y_predSVR =np.ones((leng,1),dtype=float)
 y_predMLP =np.ones((leng,1),dtype=float) 
 y_predGLM =np.ones((leng,1),dtype=float) 
 
+y_predRNN =np.ones((leng,1),dtype=float)
+y_predLSTM =np.ones((leng,1),dtype=float)
+y_predGRU =np.ones((leng,1),dtype=float)
+y_predBIDIREC =np.ones((leng,1),dtype=float)
+y_predWAVE =np.ones((leng,1),dtype=float)
 ### OLS 
-
+print("+++++++++++++ OLS using scikit-learn +++++++++++++++++++++++++++++++++++=")
 OLS_model = linear_model.LinearRegression()
 
 # Train the model using the training sets
@@ -133,38 +146,36 @@ for k in range(1,leng):
 dif = y_test - y_predSVR
 print(dif)
 
+## GLM
 
+'''
+print("+++++++++++++++++ GLM using statsmodels ++++++++++++++++++++++++++++++++++++")
 
-''' NEURAL NETWORK '''
-print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
-MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(100, 100, 100), random_state=1)
-MLP_model.fit(X_train, y_train)
+import scipy.stats as stats
+import statsmodels.api as sm
 
-y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
+from pyglmnet import GLM
+
+y_t = np.asarray(y_train)
+X_t = np.asarray(X_train)
+
+glm_reg = sm.GLM(y_t, X_t, family=sm.families.Gamma())
+glm_model = glm_reg.fit()
+print(glm_model)
+
+y_predGLM[0] = glm_model.predict(test2[0,:].reshape(-1,lag))
 
 for k in range(1,leng):
-    y_predMLP[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
+    y_predGLM[k]     = glm_model.predict(test2[k-1,:].reshape(-1,lag))
     test2[k,:(lag-1)] = test2[k-1,1:] 
-    test2[k,(lag-1)] = y_predMLP[k] 
+    test2[k,(lag-1)] = y_predGLM[k] 
  
 
-print(y_test - y_predMLP)
-
-
-'''
-t = np.linspace(1,leng,leng)
-print(t)
-plt.plot(t,y_test)
-plt.show()
-
-lines = plt.plot(t, y_test, t, y_predMLP)
-plt.show()
-
+print(y_test - y_predGLM)
 '''
 
-## GLM
 '''
-print("+++++++++++++++++ GLM using pyglmnet ++++++++++++++++++++++++++++++++++++")
+print("+++++++++++++++++ regularized GLM using pyglmnet ++++++++++++++++++++++++++++++++++++")
 import pyglmnet
 from pyglmnet import GLM
 from scipy import special
@@ -183,7 +194,26 @@ for k in range(1,leng):
  
 
 print(y_test - y_predGLM)
+
 '''
+
+
+### NEURAL NETWORK 
+
+print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
+MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(100, 100, 100), random_state=1)
+MLP_model.fit(X_train, y_train)
+
+y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
+
+for k in range(1,leng):
+    y_predMLP[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
+    test2[k,:(lag-1)] = test2[k-1,1:] 
+    test2[k,(lag-1)] = y_predMLP[k] 
+ 
+
+print(y_test - y_predMLP)
+
 
 
 ### TENSORFLOW 
@@ -285,10 +315,12 @@ print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy)
 '''
 
 ### SIMPLE RNN
+
+'''
 print("+++++++++++++++++++++++ Simple RNN using Tensorflow ++++++++++++++++++++++++++")
 
-num_epochs = 10
-total_series_length = 500
+num_epochs = 20
+##total_series_length = 500
 truncated_backprop_length = lag
 state_size = 4
 num_classes = 1
@@ -310,18 +342,18 @@ print(num_batches)
 
 tf.reset_default_graph()
 
-batchX_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length])
+batchX_placeholder = tf.placeholder(tf.float64, [batch_size, truncated_backprop_length])
 #batchY_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length])
-batchY_placeholder = tf.placeholder(tf.float32, [batch_size, num_classes])
+batchY_placeholder = tf.placeholder(tf.float64, [batch_size, num_classes])
 
-init_state = tf.placeholder(tf.float32, [batch_size, state_size])
+init_state = tf.placeholder(tf.float64, [batch_size, state_size])
 
 
-W = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float32)
-b = tf.Variable(np.zeros((1,state_size)), dtype=tf.float32)
+W = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
+b = tf.Variable(np.zeros((1,state_size)), dtype=tf.float64)
 
-W2 = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float32)
-b2 = tf.Variable(np.zeros((1,num_classes)), dtype=tf.float32)
+W2 = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float64)
+b2 = tf.Variable(np.zeros((1,num_classes)), dtype=tf.float64)
 
 # Unpack columns
 inputs_series = tf.unstack(batchX_placeholder, axis=1) # axis 1
@@ -355,41 +387,6 @@ print("++++++++ First output ++++++++++")
 _output = states_series[-1]
 print(_output)
 
-'''
-print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-current_input = inputs_series[0]
-print(current_input)
-current_input = tf.reshape(current_input, [batch_size, 1])
-input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
-next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W) + b)  # Broadcasted addition
-states_series.append(next_state)
-current_state = next_state
-
-print(current_input)
-print(input_and_state_concatenated)
-print(next_state)
-print(states_series)
-print(current_state)
-
-
-print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-current_input = inputs_series[1]
-print(current_input)
-current_input = tf.reshape(current_input, [batch_size, 1])
-input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
-
-next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W) + b)  # Broadcasted addition
-states_series.append(next_state)
-current_state = next_state
-
-print(current_input)
-print(input_and_state_concatenated)
-print(next_state)
-print(states_series)
-print(current_state)
-'''
-
-
 #logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 logits_series = tf.matmul(_output, W2) + b2  #Broadcasted addition
 print(logits_series)
@@ -410,7 +407,7 @@ print(total_loss)
 train_step = tf.train.AdagradOptimizer(0.3).minimize(total_loss)
 print(train_step)
 
-'''
+
 def plot(loss_list, predictions_series, batchX, batchY):
     plt.subplot(2, 3, 1)
     plt.cla()
@@ -430,13 +427,12 @@ def plot(loss_list, predictions_series, batchX, batchY):
 
     plt.draw()
     plt.pause(0.0001)
-'''
+
 
 
 x = X_train
 y = y_train
 _current_state = np.zeros((batch_size, state_size))
-#_current_state = tf.zeros([batch_size, state_size], tf.float32) 
 
 with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
@@ -446,13 +442,6 @@ with tf.Session() as sess:
     loss_list = []
 
     for epoch_idx in range(num_epochs):
-        ##x,y = generateData()
-        #x = x
-        #y = y
-        #_current_state = np.zeros((batch_size, state_size))
-        #_current_state = tf.zeros(tf.float32, [batch_size, state_size])
-        #_cur#rent_state = _current_state.reshape(-1,batch_size, state_size)
-        #_current_state = tf.Variable((np.zeros(-1, batch_size,state_size)), dtype=tf.float32)
         
         print("New data, epoch", epoch_idx)
 
@@ -480,8 +469,9 @@ with tf.Session() as sess:
             if batch_idx%100 == 0:
                 print("Step",batch_idx, "Loss", _total_loss)
                 #plot(loss_list, _predictions_series, batchX, batchY)
-    #y1_pred = sess.run(predictions_series, feed_dict = {x:test2})
+    #y1_pred = sess.run(predictions_series, feed_dict = {x:test2[0:5,:]})
 
 #plt.ioff()
 #plt.show()
 #print(y1_pred)
+'''
