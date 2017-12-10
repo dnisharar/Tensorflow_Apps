@@ -217,8 +217,8 @@ print(y_test - y_predMLP)
 
 
 ### TENSORFLOW 
-'''
-print('++++++++++++++++++ MLP using Tensorflow ++++++++++++++++++++++++++++++++')
+
+print('++++++++++++++++++ MLP using Tensorflow first principles ++++++++++++++++++++++++++++++++')
 
 # Create and train a tensorflow model of a neural network
 def create_train_model(hidden_nodes, num_iters):
@@ -256,27 +256,27 @@ def create_train_model(hidden_nodes, num_iters):
     for i in range(num_iters):
         sess.run(train, feed_dict={X: X_train, y: y_train})
         #loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
-        loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train, y: y_train}))
+        loss_plot.append(sess.run(loss, feed_dict={X: X_train, y: y_train}))
         weights1 = sess.run(W1)
         weights2 = sess.run(W2)
 
-    print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[hidden_nodes][-1]))
+    #print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[hidden_nodes][-1]))
+    print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[-1]))
     sess.close()
     return weights1, weights2
 
 
 # Plot the loss function over iterations
 hidden_nodes = 50 #[5, 10, 20]  
-loss_plot = {50: []} #, 10: [], 20: []}  
-weights1 = {50: None} #, 10: None, 20: None}  
-weights2 = {50: None} #, 10: None, 20: None}  
+loss_plot = [] #{50: [], 10: [], 20: []}  
+weights1 = []  #{50: None, 10: None, 20: None}  
+weights2 = [] #{50: None, 10: None, 20: None}  
 num_iters = 2000
-
 
 #plt.figure(figsize=(12,8))  
 #for hidden_nodes in num_hidden_nodes:  
-weights1[hidden_nodes], weights2[hidden_nodes] = create_train_model(hidden_nodes, num_iters)
-plt.plot(range(num_iters), loss_plot[hidden_nodes], label="nn: in-%d-out" % hidden_nodes)
+weights1, weights2 = create_train_model(hidden_nodes, num_iters)
+plt.plot(range(num_iters), loss_plot, label="nn: in-%d-out" % hidden_nodes)
 
 plt.xlabel('Iteration', fontsize=12)  
 plt.ylabel('Loss', fontsize=12)  
@@ -285,14 +285,14 @@ plt.show()
 
 
 # Evaluate models on the test set
-X = X_test
+X = test2 #X_test
 y = y_test
 
 
 #for hidden_nodes in num_hidden_nodes:
     # Forward propagation
-W1 = tf.Variable(weights1[hidden_nodes])
-W2 = tf.Variable(weights2[hidden_nodes])
+W1 = tf.Variable(weights1)
+W2 = tf.Variable(weights2)
 A1 = tf.sigmoid(tf.matmul(X, W1))
 #A1 = tf.nn.relu(tf.matmul(X, W1))
 y_est = tf.sigmoid(tf.matmul(A1, W2))
@@ -304,8 +304,9 @@ print(y_est)
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
-    y_est_np = sess.run(y_est, feed_dict={X: X_test, y: y_test})
-
+    y_est_np = sess.run(y_est, feed_dict={X: test2}) #, y: y_test})
+print(y_est_np)
+'''
     # Calculate the prediction accuracy
 correct = [estimate.argmax(axis=0) == target.argmax(axis=0) 
             for estimate, target in zip(y_est_np, ytest.as_matrix())]
@@ -313,11 +314,14 @@ accuracy = 100 * sum(correct) / len(correct)
 print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
 
 '''
+'''
+print('++++++++++++++++++ MLP using Tensorflow API ++++++++++++++++++++++++++++++++')
 
+'''
 ### SIMPLE RNN
 
 '''
-print("+++++++++++++++++++++++ Simple RNN using Tensorflow ++++++++++++++++++++++++++")
+print("+++++++++++++++++++++++ Simple RNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
 num_epochs = 20
 ##total_series_length = 500
@@ -475,3 +479,46 @@ with tf.Session() as sess:
 #plt.show()
 #print(y1_pred)
 '''
+
+'''
+print("+++++++++++++++++++++++ Simple RNN using Tensorflow API ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ LSTM using First Principles in Tensorflow ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ LSTM using Tensorflow API ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ GRU using First Principles in Tensorflow ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ GRU using Tensorflow API ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ CNN using Tensorflow API ++++++++++++++++++++++++++")
+
+'''
+
+
+
+
+
+
+
+
