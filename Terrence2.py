@@ -57,7 +57,7 @@ def train_neural_network(x):
     cost = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y) )
     optimizer = tf.train.AdamOptimizer().minimize(cost)
     
-    hm_epochs = 20 #maximum backpropagation iterations
+    hm_epochs = 3 #20 #maximum backpropagation iterations
     with tf.Session() as sess:
         # OLD:
         #sess.run(tf.initialize_all_variables())
@@ -66,9 +66,9 @@ def train_neural_network(x):
 
         for epoch in range(hm_epochs):
             epoch_loss = 0
-            for _ in range(int(mnist.train.num_examples/batch_size)):
+            for opti in range(int(mnist.train.num_examples/batch_size)):
                 epoch_x, epoch_y = mnist.train.next_batch(batch_size)
-                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
+                opti, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
                 epoch_loss += c
 
             print('Epoch', epoch, 'completed out of',hm_epochs,'loss:',epoch_loss)

@@ -1,5 +1,5 @@
 
-#!/usr/bin/python2
+#!/usr/bin/python3
 """
 Created on Sun Jul 16 21:14:28 2017
 
@@ -80,6 +80,7 @@ leng = forward #+ future
 y_predOLS =np.ones((leng,1),dtype=float) 
 y_predSVR =np.ones((leng,1),dtype=float) 
 y_predMLP =np.ones((leng,1),dtype=float) 
+y_predMLP2 =np.ones((leng,1),dtype=float) 
 y_predGLM =np.ones((leng,1),dtype=float) 
 
 y_predRNN =np.ones((leng,1),dtype=float)
@@ -201,7 +202,7 @@ print(y_test - y_predGLM)
 ### NEURAL NETWORK 
 
 print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
-MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(100, 100, 100), random_state=1)
+MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(50, 50, 50), random_state=1)
 MLP_model.fit(X_train, y_train)
 
 y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
@@ -220,6 +221,9 @@ print(y_test - y_predMLP)
 
 print('++++++++++++++++++ MLP using Tensorflow first principles ++++++++++++++++++++++++++++++++')
 
+in_dim = X_train.shape[0]
+out_dim = X_train.shape[1]
+
 # Create and train a tensorflow model of a neural network
 def create_train_model(hidden_nodes, num_iters):
 
@@ -227,26 +231,44 @@ def create_train_model(hidden_nodes, num_iters):
     tf.reset_default_graph()
 
     # Placeholders for input and output data
-    X = tf.placeholder(shape=(495, 15), dtype=tf.float64, name='X')
-    y = tf.placeholder(shape=(495, ), dtype=tf.float64, name='y')
+    X = tf.placeholder(shape=(X_train.shape[0], X_train.shape[1]), dtype=tf.float64, name='X')
+    y = tf.placeholder(shape=(X_train.shape[0], ), dtype=tf.float64, name='y')
 
     # Variables for two group of weights between the three layers of the network
-    W1 = tf.Variable(np.random.rand(15, hidden_nodes), dtype=tf.float64)
-    #W1 = tf.Variable(tf.truncated_normal([15, hidden_nodes], stddev=0.1))
-    W2 = tf.Variable(np.random.rand(hidden_nodes, 1), dtype=tf.float64)
-    #W2 = tf.Variable(tf.truncated_normal([hidden_nodes, 1], stddev=0.1))
+    W1 = tf.Variable(np.random.rand(X_train.shape[1], hidden_nodes), dtype=tf.float64)
+    #b1 = tf.Variable(tf.random_normal([hidden_nodes]), dtype=tf.float64)
+    b1 = tf.Variable(np.random.rand(hidden_nodes), dtype=tf.float64)
+    W2 = tf.Variable(np.random.rand(hidden_nodes, hidden_nodes), dtype=tf.float64)
+    b2 = tf.Variable(np.random.rand(hidden_nodes), dtype=tf.float64)
+    W3 = tf.Variable(np.random.rand(hidden_nodes, hidden_nodes), dtype=tf.float64)
+    b3 = tf.Variable(np.random.rand(hidden_nodes), dtype=tf.float64)
+    W4 = tf.Variable(np.random.rand(hidden_nodes, hidden_nodes), dtype=tf.float64)
+    b4 = tf.Variable(np.random.rand(hidden_nodes), dtype=tf.float64)
+    W5 = tf.Variable(np.random.rand(hidden_nodes, 1), dtype=tf.float64)
+    b5 = tf.Variable(np.random.rand(1), dtype=tf.float64)
+
     # Create the neural net graph
-    A1 = tf.sigmoid(tf.matmul(X, W1))
-    y_est = tf.sigmoid(tf.matmul(A1, W2))
+    #A1 = tf.sigmoid( tf.add(tf.matmul(X, W1), b1))
+    A1 = tf.nn.relu( tf.add(tf.matmul(X, W1), b1))
+    #A2 = tf.sigmoid( tf.add(tf.matmul(A1, W2), b2))
+    A2 = tf.nn.relu( tf.add(tf.matmul(A1, W2), b2))
+    #A3 = tf.sigmoid( tf.add(tf.matmul(A2, W3), b3))
+    A3 = tf.nn.relu( tf.add(tf.matmul(A2, W3), b3))
+    #A4 = tf.sigmoid( tf.add(tf.matmul(A3, W4), b4))
+    A4 = tf.nn.relu( tf.add(tf.matmul(A3, W4), b4))
+    #y_est = tf.sigmoid( tf.add(tf.matmul(A4, W5), b5))
+    y_est = tf.nn.relu( tf.add(tf.matmul(A4, W5), b5))
 
     # Define a loss function
     deltas = tf.square(y_est - y)
+    #print("deltas " + deltas)
     loss = tf.reduce_sum(deltas)
-
+    #print("loss " + loss)
     # Define a train operation to minimize the loss
     optimizer = tf.train.GradientDescentOptimizer(0.005)
+    #print("optimizer " + optimizer)
     train = optimizer.minimize(loss)
-
+    #print("train " + train)
     # Initialize variables and run session
     init = tf.global_variables_initializer()
     sess = tf.Session()
@@ -255,72 +277,124 @@ def create_train_model(hidden_nodes, num_iters):
     # Go through num_iters iterations
     for i in range(num_iters):
         sess.run(train, feed_dict={X: X_train, y: y_train})
-        #loss_plot[hidden_nodes].append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
+        #loss_plot.append(sess.run(loss, feed_dict={X: X_train.as_matrix(), y: y_train.as_matrix()}))
         loss_plot.append(sess.run(loss, feed_dict={X: X_train, y: y_train}))
         weights1 = sess.run(W1)
+        bias1    = sess.run(b1)
         weights2 = sess.run(W2)
-
-    #print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[hidden_nodes][-1]))
+        bias2    = sess.run(b2)
+        weights3 = sess.run(W3)
+        bias3    = sess.run(b3)
+        weights4 = sess.run(W4)
+        bias4    = sess.run(b4)
+        weights5 = sess.run(W5)
+        bias5    = sess.run(b5)
+    
     print("loss (hidden nodes: %d, iterations: %d): %.2f" % (hidden_nodes, num_iters, loss_plot[-1]))
+    #print(loss_plot)
     sess.close()
-    return weights1, weights2
+    return weights1, bias1, weights2, bias2, weights3, bias3, weights4, bias4, weights5, bias5
+
+
+
+#loss_plot = []  
+#create_train_model(100, 2000)
+#create_train_model(100, 200)
+#create_train_model(200, 300)
 
 
 # Plot the loss function over iterations
-hidden_nodes = 50 #[5, 10, 20]  
-loss_plot = [] #{50: [], 10: [], 20: []}  
-weights1 = []  #{50: None, 10: None, 20: None}  
-weights2 = [] #{50: None, 10: None, 20: None}  
-num_iters = 2000
+#num_hidden_nodes = 10  
+loss_plot = []  
+weights1 = [] 
+bias1 = [] 
+weights2 = [] 
+bias2 = []  
+weights3 = [] 
+bias3 = [] 
+weights4 = [] 
+bias4 = [] 
+weights5 = [] 
+bias5 = [] 
+num_iters = 50
 
-#plt.figure(figsize=(12,8))  
-#for hidden_nodes in num_hidden_nodes:  
-weights1, weights2 = create_train_model(hidden_nodes, num_iters)
-plt.plot(range(num_iters), loss_plot, label="nn: in-%d-out" % hidden_nodes)
+hidden_nodes = 10
+weights1, bias1, weights2, bias2, weights3, bias3, weights4, bias4, weights5, bias5 = create_train_model(hidden_nodes, num_iters)
+plt.plot(range(num_iters), loss_plot, label="nn: 4-%d-%d-%d-%d-3?" % (hidden_nodes,  hidden_nodes, hidden_nodes, hidden_nodes))
 
 plt.xlabel('Iteration', fontsize=12)  
 plt.ylabel('Loss', fontsize=12)  
 plt.legend(fontsize=12)  
 plt.show()
 
-
 # Evaluate models on the test set
-X = test2 #X_test
-y = y_test
+X = tf.placeholder(shape=(1, X_train.shape[1]), dtype=tf.float64, name='X')  
+y = tf.placeholder(shape=(1, 1), dtype=tf.float64, name='y')
 
 
-#for hidden_nodes in num_hidden_nodes:
     # Forward propagation
 W1 = tf.Variable(weights1)
+b1 = tf.Variable(bias1)
 W2 = tf.Variable(weights2)
-A1 = tf.sigmoid(tf.matmul(X, W1))
-#A1 = tf.nn.relu(tf.matmul(X, W1))
-y_est = tf.sigmoid(tf.matmul(A1, W2))
-#y_est = tf.nn.relu(tf.matmul(A1, W2))
-print(y_est)
+b2 = tf.Variable(bias2)
+W3 = tf.Variable(weights3)
+b3 = tf.Variable(bias3)
+W4 = tf.Variable(weights4)
+b4 = tf.Variable(bias4)
+W5 = tf.Variable(weights5)
+b5 = tf.Variable(bias5)
+
+#A1 = tf.sigmoid( tf.add(tf.matmul(X, W1), b1))
+A1 = tf.nn.relu( tf.add(tf.matmul(X, W1), b1))
+#A2 = tf.sigmoid( tf.add(tf.matmul(A1, W2), b2))
+A2 = tf.nn.relu( tf.add(tf.matmul(A1, W2), b2))
+#A3 = tf.sigmoid( tf.add(tf.matmul(A2, W3), b3))
+A3 = tf.nn.relu( tf.add(tf.matmul(A2, W3), b3))
+#A4 = tf.sigmoid( tf.add(tf.matmul(A3, W4), b4))
+A4 = tf.nn.relu( tf.add(tf.matmul(A3, W4), b4))
+#y_est = tf.sigmoid( tf.add(tf.matmul(A4, W5), b5))
+y_est = tf.nn.relu( tf.add(tf.matmul(A4, W5), b5))
+#print(y_est)
 
 
     # Calculate the predicted outputs
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
-    y_est_np = sess.run(y_est, feed_dict={X: test2}) #, y: y_test})
-print(y_est_np)
+    y_predMLP2[0] = sess.run(y_est, feed_dict={X: test2[0,:].reshape(-1,lag)}) 
+    #y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
+
+    for k in range(1,leng):
+        #y_predMLP2[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
+        y_predMLP2[k]     = sess.run(y_est, feed_dict={X: test2[k-1,:].reshape(-1,lag)}) 
+        test2[k,:(lag-1)] = test2[k-1,1:] 
+        test2[k,(lag-1)] = y_predMLP2[k] 
+ 
+
+#print(y_test - y_predMLP2)
+print("MLP2")
+print(y_predMLP2)
+
 '''
     # Calculate the prediction accuracy
 correct = [estimate.argmax(axis=0) == target.argmax(axis=0) 
             for estimate, target in zip(y_est_np, ytest.as_matrix())]
 accuracy = 100 * sum(correct) / len(correct)
-print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
-
+print(len(correct))
+print(sum(correct))
+print("accuracy = %.2f%%" %accuracy)
+print(correct)
+##print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
+print("Network architecture = 4-%d-%d-%d-%d-3, accuracy = %.2f%%" % (hidden_nodes,  hidden_nodes, hidden_nodes, hidden_nodes,accuracy))
 '''
+
 '''
 print('++++++++++++++++++ MLP using Tensorflow API ++++++++++++++++++++++++++++++++')
 
 '''
 ### SIMPLE RNN
 
-'''
+
 print("+++++++++++++++++++++++ Simple RNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
 num_epochs = 20
@@ -331,6 +405,7 @@ num_classes = 1
 batch_size = 5
 ##num_batches = total_series_length//batch_size//truncated_backprop_length
 num_batches = X_train.shape[0]/batch_size
+
 
 future = 5
 print(X_train.shape)
@@ -391,6 +466,7 @@ print("++++++++ First output ++++++++++")
 _output = states_series[-1]
 print(_output)
 
+'''
 #logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 logits_series = tf.matmul(_output, W2) + b2  #Broadcasted addition
 print(logits_series)
@@ -486,6 +562,16 @@ print("+++++++++++++++++++++++ Simple RNN using Tensorflow API +++++++++++++++++
 '''
 
 '''
+print("+++++++++++++++++++++++ GRU using First Principles in Tensorflow ++++++++++++++++++++++++++")
+
+'''
+
+'''
+print("+++++++++++++++++++++++ GRU using Tensorflow API ++++++++++++++++++++++++++")
+
+'''
+
+'''
 print("+++++++++++++++++++++++ LSTM using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
 '''
@@ -495,15 +581,6 @@ print("+++++++++++++++++++++++ LSTM using Tensorflow API +++++++++++++++++++++++
 
 '''
 
-'''
-print("+++++++++++++++++++++++ GRU using First Principles in Tensorflow ++++++++++++++++++++++++++")
-
-'''
-
-'''
-print("+++++++++++++++++++++++ GRU using Tensorflow API ++++++++++++++++++++++++++")
-
-'''
 
 '''
 print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
