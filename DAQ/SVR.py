@@ -84,6 +84,7 @@ y_predMLP2 =np.ones((leng,1),dtype=float)
 y_predGLM =np.ones((leng,1),dtype=float) 
 
 y_predRNN =np.ones((leng,1),dtype=float)
+y_predRNN2 =np.ones((leng,1),dtype=float)
 y_predLSTM =np.ones((leng,1),dtype=float)
 y_predGRU =np.ones((leng,1),dtype=float)
 y_predBIDIREC =np.ones((leng,1),dtype=float)
@@ -417,7 +418,7 @@ print(X_test.shape)
 print(test2.shape)
 
 print(num_batches)
-
+print(lag)
 
 tf.reset_default_graph()
 
@@ -428,11 +429,21 @@ batchY_placeholder = tf.placeholder(tf.float64, [batch_size, num_classes])
 init_state = tf.placeholder(tf.float64, [batch_size, state_size])
 
 
-W = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
-b = tf.Variable(np.zeros((1,state_size)), dtype=tf.float64)
+W1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
+#b1 = tf.Variable(np.zeros((1,state_size)), dtype=tf.float64)
+b1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
 
-W2 = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float64)
-b2 = tf.Variable(np.zeros((1,num_classes)), dtype=tf.float64)
+W2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+#b2 = tf.Variable(np.zeros((1,state_size)), dtype=tf.float64)
+b2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+
+W3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+#b2 = tf.Variable(np.zeros((1,state_size)), dtype=tf.float64)
+b3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+
+W = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float64)
+#b = tf.Variable(np.zeros((1,num_classes)), dtype=tf.float64)
+b = tf.Variable(np.random.rand(1,num_classes), dtype=tf.float64)
 
 # Unpack columns
 inputs_series = tf.unstack(batchX_placeholder, axis=1) # axis 1
@@ -452,23 +463,68 @@ print(inputs_series[0])
 # Forward pass
 current_state = init_state
 states_series = []
+#states_series = tf.placeholder(tf.float64, [batch_size, truncated_backprop_length*state_size])
+#states_series = tf.placeholder(tf.float64, [batch_size, state_size])
 
 for current_input in inputs_series:
     current_input = inputs_series[0]
     current_input = tf.reshape(current_input, [batch_size, 1])
     input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
 
-    #next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W) + b)  # Broadcasted addition
-    next_state = tf.nn.relu(tf.matmul(input_and_state_concatenated, W) + b)  # Broadcasted addition
+    #next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W1) + b1)  # Broadcasted addition
+    next_state = tf.nn.relu(tf.matmul(input_and_state_concatenated, W1) + b1)  # Broadcasted addition
     states_series.append(next_state)
+    #states = tf.concat([states_series, next_state],1)#.append(next_state)
+    #states_series = states
     current_state = next_state
 print("++++++++ First output ++++++++++")
-_output = states_series[-1]
-print(_output)
+#_output1 = states_series[-1]
+print(states_series[-1])
+print(len(states_series))
+_output1 = states_series
 
-'''
+
+inputs_series2 = _output1 #tf.unstack(_output1, axis=0)
+current_state = init_state
+states_series2 = []
+
+for current_input in inputs_series2:
+    current_input = inputs_series2[0]
+    #current_input = tf.reshape(current_input, [batch_size, 1])
+    input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
+
+    #next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W1) + b1)  # Broadcasted addition
+    next_state = tf.nn.relu(tf.matmul(input_and_state_concatenated, W2) + b2)  # Broadcasted addition
+    states_series2.append(next_state)
+    current_state = next_state
+print("++++++++ Second output ++++++++++")
+#_output2 = states_series2[-1]
+print(states_series2[-1])
+print(len(states_series2))
+_output2 = states_series2
+
+
+inputs_series3 = _output2 #tf.unstack(_output1, axis=0)
+current_state = init_state
+states_series3 = []
+
+for current_input in inputs_series3:
+    current_input = inputs_series3[0]
+    #current_input = tf.reshape(current_input, [batch_size, 1])
+    input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
+
+    #next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W1) + b1)  # Broadcasted addition
+    next_state = tf.nn.relu(tf.matmul(input_and_state_concatenated, W3) + b3)  # Broadcasted addition
+    states_series3.append(next_state)
+    current_state = next_state
+print("++++++++ Third output ++++++++++")
+#_output3 = states_series3[-1]
+print(states_series3[-1])
+print(len(states_series3))
+_output3 = states_series3[-1]
+
 #logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
-logits_series = tf.matmul(_output, W2) + b2  #Broadcasted addition
+logits_series = tf.matmul(_output3, W) + b  #Broadcasted addition
 print(logits_series)
 
 
@@ -535,26 +591,35 @@ with tf.Session() as sess:
             batchX = x[start_idx:end_idx,:]
             #batchY = y[:,start_idx:end_idx]
             batchY = y[start_idx:end_idx]
+            _pred = sess.run(predictions_series, feed_dict={ batchX_placeholder:batchX} )
+            #_total_loss, _train_step, _current_state, _predictions_series = sess.run(
+                #[total_loss, train_step, current_state, predictions_series],
+                #feed_dict={ batchX_placeholder:batchX, batchY_placeholder:batchY, init_state:_current_state })
 
-            _total_loss, _train_step, _current_state, _predictions_series = sess.run(
-                [total_loss, train_step, current_state, predictions_series],
-                feed_dict={
-                    batchX_placeholder:batchX,
-                    batchY_placeholder:batchY,
-                    init_state:_current_state
-                })
+            #loss_list.append(_total_loss)
 
-            loss_list.append(_total_loss)
+            #if batch_idx%100 == 0:
+                #print("Step",batch_idx, "Loss", _total_loss)
+                ##plot(loss_list, _predictions_series, batchX, batchY)
+    ##y1_pred = sess.run(predictions_series, feed_dict = {x:test2[0:5,:]})
+    y_predRNN[0] = sess.run(predictions_series, feed_dict={X: test2[0,:].reshape(-1,lag)}) 
+    #y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
 
-            if batch_idx%100 == 0:
-                print("Step",batch_idx, "Loss", _total_loss)
-                #plot(loss_list, _predictions_series, batchX, batchY)
-    #y1_pred = sess.run(predictions_series, feed_dict = {x:test2[0:5,:]})
+    for k in range(1,leng):
+        #y_predMLP2[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
+        y_predRNN[k]     = sess.run(predictions_series, feed_dict={X: test2[k-1,:].reshape(-1,lag)}) 
+        test2[k,:(lag-1)] = test2[k-1,1:] 
+        test2[k,(lag-1)] = y_predRNN[k] 
+ 
+
+#print(y_test - y_predMLP2)
+print("RNN")
+print(y_predRNN)
 
 #plt.ioff()
 #plt.show()
 #print(y1_pred)
-'''
+
 
 '''
 print("+++++++++++++++++++++++ Simple RNN using Tensorflow API ++++++++++++++++++++++++++")
