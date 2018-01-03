@@ -911,9 +911,9 @@ print("+++++++++++++++++++++++ LSTM using First Principles in Tensorflow +++++++
 
 num_epochs = 10
 truncated_backprop_length = lag
-state_size = 100 #4
+state_size = 4
 num_classes = 1
-batch_size = 101 #5
+batch_size = 5
 num_batches = X_train.shape[0]/batch_size
 
 
@@ -937,12 +937,15 @@ batchY_placeholder = tf.placeholder(tf.float64, [batch_size, num_classes])
 init_state = tf.placeholder(tf.float64, [batch_size, state_size])
 
 
-Wr1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
-br1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wz1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
-bz1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wh1 = tf.Variable(np.random.rand(2*state_size+1, state_size), dtype=tf.float64)
-bh1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wf1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
+bf1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wi1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
+bi1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wc1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
+bc1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wo1 = tf.Variable(np.random.rand(2*state_size+1, state_size), dtype=tf.float64)
+bo1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+
 
 Wr2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
 br2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
@@ -982,23 +985,40 @@ print(inputs_series[0])
 # Forward pass
 current_state = init_state
 states_series = []
-
+cee = []
+cee.append(tf.zeros([state_size+1, state_size], tf.float64))
+print(cee)
+c = []
+c.append(cee)
+print(c[0])
+t =1
 print("first layer")
 for current_input in inputs_series:
-    #current_input = inputs_series[0]
+
+    current_input = inputs_series[0]
     print(current_input.shape)
     current_input = tf.reshape(current_input, [batch_size, 1])
     print(current_input.shape)
     input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
     print(input_and_state_concatenated.shape)
     f = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wf1) + bf1) 
+    print(f.shape)
     i = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wi1) + bi1) 
-    c_hat = tf.tahn(tf.matmul(input_and_state_concatenated, Wc1) + bc1)   
-    c = f*c(-1) + i*c_hat
+    print(i.shape)
+    c_hat = tf.tanh(tf.matmul(input_and_state_concatenated, Wc1) + bc1)  
+    print(c_hat.shape) 
+    a1 = tf.transpose(c[t-1])
+    #a2 = tf.reshape(a1, [state_size, state_size+1])
+    b = tf.add( tf.matmul(f, a1[:,:]) , tf.matmul(i, tf.transpose(c_hat)))
+    c.append(b)
+    print(c)
+    print("end")
+    t+=1
+'''
     o = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wo1) + bo1) 
     h = o*tahn(c)
 
-'''    
+
     
     print(r.shape)
     z = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wz1) + bz1) 
