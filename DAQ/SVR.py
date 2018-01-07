@@ -943,23 +943,26 @@ Wi1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
 bi1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
 Wc1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
 bc1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wo1 = tf.Variable(np.random.rand(2*state_size+1, state_size), dtype=tf.float64)
+Wo1 = tf.Variable(np.random.rand(state_size+1, state_size), dtype=tf.float64)
 bo1 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
 
+Wf2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bf2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wi2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bi2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wc2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bc2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wo2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bo2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
 
-Wr2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
-br2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wz2 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
-bz2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wh2 = tf.Variable(np.random.rand(2*state_size+state_size, state_size), dtype=tf.float64)
-bh2 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-
-Wr3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
-br3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wz3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
-bz3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
-Wh3 = tf.Variable(np.random.rand(2*state_size+state_size, state_size), dtype=tf.float64)
-bh3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wf3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bf3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wi3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bi3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wc3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bc3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
+Wo3 = tf.Variable(np.random.rand(2*state_size, state_size), dtype=tf.float64)
+bo3 = tf.Variable(np.random.rand(1,state_size), dtype=tf.float64)
 
 
 W = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float64)
@@ -984,18 +987,16 @@ print(inputs_series[0])
 
 # Forward pass
 current_state = init_state
+#cell_state =  init_state
+cell_state = tf.Variable(np.random.rand(batch_size, state_size), dtype=tf.float64)
 states_series = []
-cee = []
-cee.append(tf.zeros([state_size+1, state_size], tf.float64))
-print(cee)
-c = []
-c.append(cee)
-print(c[0])
-t =1
+cell_series = []
+cell_series.append(cell_state)
+
 print("first layer")
 for current_input in inputs_series:
 
-    current_input = inputs_series[0]
+    #current_input = inputs_series[0]
     print(current_input.shape)
     current_input = tf.reshape(current_input, [batch_size, 1])
     print(current_input.shape)
@@ -1003,33 +1004,28 @@ for current_input in inputs_series:
     print(input_and_state_concatenated.shape)
     f = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wf1) + bf1) 
     print(f.shape)
-    i = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wi1) + bi1) 
+    i = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wi1) + bi1) 
     print(i.shape)
-    c_hat = tf.tanh(tf.matmul(input_and_state_concatenated, Wc1) + bc1)  
+    c_hat = cell_series[-1] 
     print(c_hat.shape) 
-    a1 = tf.transpose(c[t-1])
-    #a2 = tf.reshape(a1, [state_size, state_size+1])
-    b = tf.add( tf.matmul(f, a1[:,:]) , tf.matmul(i, tf.transpose(c_hat)))
-    c.append(b)
-    print(c)
-    print("end")
-    t+=1
-'''
-    o = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wo1) + bo1) 
-    h = o*tahn(c)
-
-
-    
-    print(r.shape)
-    z = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wz1) + bz1) 
-    print(z.shape)
-    h_hat = tf.nn.relu(tf.matmul(tf.concat([input_and_state_concatenated, r],1), Wh1) + bh1) 
-    print(h_hat.shape)
-    h = tf.add( tf.matmul( (1-z), tf.transpose(current_state)) , tf.matmul(z, tf.transpose(h_hat)) )
+    c = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wc1) + bc1)  
+    print(c.shape) 
+    b = tf.add( tf.matmul(f, tf.transpose(c_hat)) , tf.matmul(i, tf.transpose(c)))
+    b = b[:,:-1]
+    print(b.shape)
+    cell_series.append(b)
+    #print(cell_series)
+    o = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wo1) + bo1) 
+    print(o.shape)
+    h = tf.matmul( tf.nn.relu(b), tf.transpose(o))
+    h = h[:,:-1]
     print(h.shape)
-    next_state = h[:,:state_size]    
-    states_series.append(next_state)
-    current_state = next_state
+    states_series.append(h)
+    #print(states_series)
+    current_state = h
+    print(current_state.shape)
+    print("end")
+    c_hat = b
 
 
 print("++++++++ First output ++++++++++")
@@ -1038,29 +1034,46 @@ print(len(states_series))
 _output1 = states_series
 
 
+print("second layer")
 inputs_series2 = _output1 
 current_state = init_state
 states_series2 = []
+cell_state2 = tf.Variable(np.random.rand(batch_size, state_size), dtype=tf.float64)
+cell_series2 = []
+cell_series2.append(cell_state)
 
-print("second layer")
+
 for current_input in inputs_series2:
-    #current_input = inputs_series2[0]
-    print(current_input.shape)
-    #current_input = tf.reshape(current_input, [batch_size, 1])
+
+    current_input = inputs_series2[0]
     print(current_input.shape)
     input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
     print(input_and_state_concatenated.shape)
-    r = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wr2) + br2) 
-    print(r.shape)
-    z = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wz2) + bz2) 
-    print(z.shape)
-    h_hat = tf.nn.relu(tf.matmul(tf.concat([input_and_state_concatenated, r],1), Wh2) + bh2) 
-    print(h_hat.shape)
-    h = tf.add( tf.matmul( (1-z), tf.transpose(current_state)) , tf.matmul(z, tf.transpose(h_hat)) )
+    f = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wf2) + bf2) 
+    print(f.shape)
+    i = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wi2) + bi2) 
+    print(i.shape)
+    c_hat = cell_series2[-1] 
+    print(c_hat.shape) 
+    c = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wc2) + bc2)  
+    print(c.shape) 
+    b = tf.add( tf.matmul(f, tf.transpose(c_hat)) , tf.matmul(i, tf.transpose(c)))
+    b = b[:,:-1]
+    print(b.shape)
+    cell_series2.append(b)
+    #print(cell_series)
+    o = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wo2) + bo2) 
+    print(o.shape)
+    h = tf.matmul( tf.nn.relu(b), tf.transpose(o))
+    h = h[:,:-1]
     print(h.shape)
-    next_state = h[:,:state_size]    
-    states_series2.append(next_state)
-    current_state = next_state
+    states_series2.append(h)
+    #print(states_series)
+    current_state = h
+    print(current_state.shape)
+    print("end")
+    c_hat = b
+
 
 print("++++++++ Second output ++++++++++")
 print(states_series2[-1])
@@ -1068,28 +1081,46 @@ print(len(states_series2))
 _output2 = states_series2
 
 
+print("Third layer")
 inputs_series3 = _output2 
 current_state = init_state
 states_series3 = []
+cell_state3 = tf.Variable(np.random.rand(batch_size, state_size), dtype=tf.float64)
+cell_series3 = []
+cell_series3.append(cell_state)
+
 
 for current_input in inputs_series3:
-    #current_input = inputs_series3[0]
-    print(current_input.shape)
-    #current_input = tf.reshape(current_input, [batch_size, 1])
+
+    current_input = inputs_series3[0]
     print(current_input.shape)
     input_and_state_concatenated = tf.concat([current_input, current_state],1)  # Increasing number of columns
     print(input_and_state_concatenated.shape)
-    r = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wr3) + br3) 
-    print(r.shape)
-    z = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wz3) + bz3) 
-    print(z.shape)
-    h_hat = tf.nn.relu(tf.matmul(tf.concat([input_and_state_concatenated, r],1), Wh3) + bh3) 
-    print(h_hat.shape)
-    h = tf.add( tf.matmul( (1-z), tf.transpose(current_state)) , tf.matmul(z, tf.transpose(h_hat)) )
+    f = tf.sigmoid(tf.matmul(input_and_state_concatenated, Wf3) + bf3) 
+    print(f.shape)
+    i = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wi3) + bi3) 
+    print(i.shape)
+    c_hat = cell_series3[-1] 
+    print(c_hat.shape) 
+    c = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wc3) + bc3)  
+    print(c.shape) 
+    b = tf.add( tf.matmul(f, tf.transpose(c_hat)) , tf.matmul(i, tf.transpose(c)))
+    b = b[:,:-1]
+    print(b.shape)
+    cell_series3.append(b)
+    #print(cell_series)
+    o = tf.nn.relu(tf.matmul(input_and_state_concatenated, Wo3) + bo3) 
+    print(o.shape)
+    h = tf.matmul( tf.nn.relu(b), tf.transpose(o))
+    h = h[:,:-1]
     print(h.shape)
-    next_state = h[:,:state_size]    
-    states_series3.append(next_state)
-    current_state = next_state
+    states_series3.append(h)
+    #print(states_series3)
+    current_state = h
+    print(current_state.shape)
+    print("end")
+    c_hat = b
+
 
 print("++++++++ Third output ++++++++++")
 print(states_series3[-1])
@@ -1101,7 +1132,6 @@ print(_output3)
 #logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 logits_series = tf.matmul(_output3, W) + b  #Broadcasted addition
 print(logits_series)
-
 
 print("++++++++++++++++++++")
 ##predictions_series = [tf.nn.relu(logits) for logits in logits_series]
@@ -1141,8 +1171,7 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.draw()
     plt.pause(0.0001)
 
-
-
+'''
 x = X_train
 y = y_train
 _current_state = np.zeros((batch_size, state_size))
@@ -1207,10 +1236,12 @@ print("+++++++++++++++++++++++ LSTM using Tensorflow API +++++++++++++++++++++++
 '''
 
 
-'''
+
 print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
-'''
+
+
+
 
 '''
 print("+++++++++++++++++++++++ CNN using Tensorflow API ++++++++++++++++++++++++++")
