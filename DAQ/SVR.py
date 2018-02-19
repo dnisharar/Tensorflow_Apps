@@ -32,7 +32,7 @@ lag = 15
 batch_size =  15
 
 X = np.array(d1)
-X = X[len(X)-515:,1]
+X = X[(len(X)-515):,1]
 print(X.shape)
 
 
@@ -89,6 +89,7 @@ y_predLSTM =np.ones((leng,1),dtype=float)
 y_predGRU =np.ones((leng,1),dtype=float)
 y_predBIDIREC =np.ones((leng,1),dtype=float)
 y_predWAVE =np.ones((leng,1),dtype=float)
+y_predCNN =np.ones((leng,1),dtype=float)
 ### OLS 
 print("+++++++++++++ OLS using scikit-learn +++++++++++++++++++++++++++++++++++=")
 OLS_model = linear_model.LinearRegression()
@@ -1239,7 +1240,103 @@ print("+++++++++++++++++++++++ LSTM using Tensorflow API +++++++++++++++++++++++
 
 print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
+# Train the model using the training sets
+'''
+OLS_model.fit(X_train,y_train) 
+y_predOLS[0] = OLS_model.predict(test2[0,:].reshape(-1,lag))
+print(y_predOLS)
 
+for k in range(1,leng):
+    y_predOLS[k]     = OLS_model.predict(test2[k-1,:].reshape(-1,lag))
+    test2[k,:(lag-1)] = test2[k-1,1:] 
+    test2[k,(lag-1)] = y_predOLS[k] 
+
+y_test = y_test.reshape(leng,1) 
+print(y_test - y_predOLS)
+'''
+
+train_dataset = X_train 
+train_labels  = y_train
+test_dataset  = test2
+test_labels   = y_predCNN
+
+batch_size  = 10
+image_width = train_dataset.shape[1] 
+image_height = 1
+image_depth = 1
+ 
+
+from tflearn.layers.conv import conv_1d, max_pool_1d, avg_pool_1d
+from tflearn.layers.core import fully_connected, dropout, flatten
+
+
+
+def model_CNN(data):
+    layer1_conv = conv_1d(data, nb_filter = 6, filter_size = 5, activation='relu', padding='SAME', bias = True)
+    layer1_pool = avg_pool_1d(layer1_conv, kernel_size = 2, strides=2, padding='SAME')
+
+    layer2_conv = conv_1d(layer1_pool, nb_filter = 16, filter_size = 5, strides = [1,1,1,1], activation='relu', padding='VALID', bias = True)
+    layer2_pool = avg_pool_1d(layer2_conv, kernel_size = 2, strides=2, padding='SAME')
+
+    flat_layer = flatten(layer2_pool)
+    layer3_fccd = fully_connected(flat_layer, n_units = 120, activation='relu', bias = True)
+
+    layer4_fccd = fully_connected(layer3_fccd, n_units = 84, activation='relu', bias = True)
+
+    w = tf.Variable(tf.truncated_normal([84, 1], stddev=0.1))
+    b = tf.Variable(tf.constant(1.0, shape = [1]))
+
+    logits = tf.matmul(layer4_fccd, w) + b
+    return logits
+
+#number of iterations and learning rate
+num_steps = 20
+display_step = 5
+learning_rate = 0.5 #0.001
+num_labels = 1
+
+graph = tf.Graph()
+with graph.as_default():
+    #1) First we put the input data in a tensorflow friendly form. 
+    tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, image_width, image_height, image_depth))
+    tf_train_labels = tf.placeholder(tf.float32, shape = (batch_size, num_labels))
+    tf_test_dataset = tf.constant(test_dataset, tf.float32)
+ 
+    #2) Then, the weight matrices and bias vectors are initialized
+ 
+    #3. The model used to calculate the logits (predicted labels)
+    model = model_CNN
+    logits = model(tf_train_dataset)
+
+    #4. then we compute the softmax cross entropy between the logits and the (actual) labels
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=tf_train_labels))
+    
+    #5. The optimizer is used to calculate the gradients of the loss function 
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+ 
+    # Predictions for the training, validation, and test data.
+    train_prediction = tf.nn.softmax(logits)
+    test_prediction = tf.nn.softmax(model(tf_test_dataset))
+
+
+with tf.Session(graph=graph) as session:
+    tf.global_variables_initializer().run()
+    print(' Initialized with learning_rate', learning_rate)
+    for step in range(num_steps):
+ 
+        #Since we are using stochastic gradient descent, we are selecting  small batches from the training dataset,
+        #and training the convolutional neural network each time with a batch. 
+        offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
+        batch_data = train_dataset[offset:(offset + batch_size), :, :, :]
+        batch_labels = train_labels[offset:(offset + batch_size), :]
+        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+        _, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+        
+        if step % display_step == 0:
+            train_accuracy = accuracy(predictions, batch_labels)
+            test_accuracy = accuracy(test_prediction.eval(), test_labels)
+            message = "step {:04d} : loss is {:06.2f}, accuracy on training set {:02.2f} %, accuracy on test set {:02.2f} %".format(step, l, train_accuracy, test_accuracy)
+            print(message)
 
 
 
