@@ -58,6 +58,7 @@ X_test, y_test = test[:,:-1], test[:,-1]
 print(X_test.shape)
 print(y_test.shape)
 
+
 ##test = np.ones((lag,lag),dtype = float)
 ##test[:future,:]= X_test
 ##print(test.shape)
@@ -69,6 +70,7 @@ t2 = test2_.shape[1]
 print(t2)
 test2 = tf.placeholder(tf.float64, [t1, t2])
 test2 = test2_
+
 
 test2[0,:] = df[(n1-1),1:]
 print(test2.shape)
@@ -91,13 +93,15 @@ y_predBIDIREC =np.ones((leng,1),dtype=float)
 y_predWAVE =np.ones((leng,1),dtype=float)
 y_predCNN =np.ones((leng,1),dtype=float)
 ### OLS 
+
+
 print("+++++++++++++ OLS using scikit-learn +++++++++++++++++++++++++++++++++++=")
 OLS_model = linear_model.LinearRegression()
 
 # Train the model using the training sets
 OLS_model.fit(X_train,y_train) 
 y_predOLS[0] = OLS_model.predict(test2[0,:].reshape(-1,lag))
-print(y_predOLS)
+print("\n", y_predOLS)
 
 for k in range(1,leng):
     y_predOLS[k]     = OLS_model.predict(test2[k-1,:].reshape(-1,lag))
@@ -106,6 +110,9 @@ for k in range(1,leng):
 
 y_test = y_test.reshape(leng,1) 
 print(y_test - y_predOLS)
+print("\n",y_predOLS)
+
+
 
 ###SVR 
 
@@ -113,7 +120,8 @@ print("++++++++++++ SVR using scikit-learn +++++++++++++++++++++++++++++")
 '''
 #Model Optimization 
 #parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10, 100, 1000], 'gamma': np.logspace(-2, 1, 4,base=2),'epsilon':np.logspace(-2,1,4,base=10)} 
-parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10], 'gamma': np.logspace(-2, 1, 2,base=2),'epsilon':np.logspace(-2,1,2,base=10)}
+parameters    = {'kernel':('linear','poly', 'rbf'),'C':[1, 10], 'gamma': np.logspace(-2, 1, 2,base=2),
+                  'epsilon':np.logspace(-2,1,2,base=10)}
 SVR_model     = SVR()
 grid           = GridSearchCV(SVR_model, parameters)
 SVR_model = grid.fit(X_train, y_train)
@@ -137,6 +145,9 @@ dif = y_test - y_predSVR
 print(dif)
 
 '''
+
+
+
 mod = SVR(kernel='rbf', C= 0.02, gamma= 'auto', epsilon = 0.005).fit(X_train, y_train)
 y_predSVR[0]     = mod.predict(test2[0,:].reshape(-1,lag)) 
 
@@ -147,10 +158,10 @@ for k in range(1,leng):
      
 
 dif = y_test - y_predSVR
-print(dif)
+print("\n",y_predSVR)
+
 
 ## GLM
-
 '''
 print("+++++++++++++++++ GLM using statsmodels ++++++++++++++++++++++++++++++++++++")
 
@@ -175,6 +186,7 @@ for k in range(1,leng):
  
 
 print(y_test - y_predGLM)
+
 '''
 
 '''
@@ -197,14 +209,14 @@ for k in range(1,leng):
  
 
 print(y_test - y_predGLM)
-
 '''
+
 
 
 ### NEURAL NETWORK 
 
 print("+++++++++++++ MLP using scikit-learn +++++++++++++++++++")
-MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(50, 50, 50), random_state=1)
+MLP_model = MLPRegressor(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(10, 10, 10,10), random_state=1)
 MLP_model.fit(X_train, y_train)
 
 y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
@@ -215,16 +227,20 @@ for k in range(1,leng):
     test2[k,(lag-1)] = y_predMLP[k] 
  
 
-print(y_test - y_predMLP)
+print("\n", y_test - y_predMLP)
+print("\n", y_test)
+print("\n", y_predMLP)
+
 
 
 
 ### TENSORFLOW 
 
+
 print('++++++++++++++++++ MLP using Tensorflow first principles ++++++++++++++++++++++++++++++++')
 
-in_dim = X_train.shape[0]
-out_dim = X_train.shape[1]
+#in_dim = X_train.shape[0]
+#out_dim = X_train.shape[1]
 
 # Create and train a tensorflow model of a neural network
 def create_train_model(hidden_nodes, num_iters):
@@ -298,10 +314,9 @@ def create_train_model(hidden_nodes, num_iters):
     return weights1, bias1, weights2, bias2, weights3, bias3, weights4, bias4, weights5, bias5
 
 
-
-#loss_plot = []  
+loss_plot = []  
 #create_train_model(100, 2000)
-#create_train_model(100, 200)
+create_train_model(100, 200)
 #create_train_model(200, 300)
 
 
@@ -328,6 +343,7 @@ plt.xlabel('Iteration', fontsize=12)
 plt.ylabel('Loss', fontsize=12)  
 plt.legend(fontsize=12)  
 plt.show()
+
 
 # Evaluate models on the test set
 X = tf.placeholder(shape=(1, X_train.shape[1]), dtype=tf.float64, name='X')  
@@ -364,10 +380,8 @@ init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
     y_predMLP2[0] = sess.run(y_est, feed_dict={X: test2[0,:].reshape(-1,lag)}) 
-    #y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
-
+    print("\n",y_predMLP2[0])
     for k in range(1,leng):
-        #y_predMLP2[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
         y_predMLP2[k]     = sess.run(y_est, feed_dict={X: test2[k-1,:].reshape(-1,lag)}) 
         test2[k,:(lag-1)] = test2[k-1,1:] 
         test2[k,(lag-1)] = y_predMLP2[k] 
@@ -377,10 +391,11 @@ with tf.Session() as sess:
 print("MLP2")
 print(y_predMLP2)
 
+
 '''
     # Calculate the prediction accuracy
 correct = [estimate.argmax(axis=0) == target.argmax(axis=0) 
-            for estimate, target in zip(y_est_np, ytest.as_matrix())]
+            for estimate, target in zip(y_est, y_test)] #.as_matrix())]
 accuracy = 100 * sum(correct) / len(correct)
 print(len(correct))
 print(sum(correct))
@@ -388,12 +403,12 @@ print("accuracy = %.2f%%" %accuracy)
 print(correct)
 ##print('Network architecture 4-%d-3, accuracy: %.2f%%' % (hidden_nodes, accuracy))
 print("Network architecture = 4-%d-%d-%d-%d-3, accuracy = %.2f%%" % (hidden_nodes,  hidden_nodes, hidden_nodes, hidden_nodes,accuracy))
-'''
 
 '''
-print('++++++++++++++++++ MLP using Tensorflow API ++++++++++++++++++++++++++++++++')
 
-'''
+#print('++++++++++++++++++ MLP using Tensorflow API ++++++++++++++++++++++++++++++++')
+
+
 ### SIMPLE RNN
 
 
@@ -412,6 +427,7 @@ num_batches = X_train.shape[0]/batch_size
 future = 5
 print(X_train.shape)
 print(y_train.shape)
+
 y_train = y_train.reshape(495,1)
 print(y_train.shape)
 print(y_test.shape)
@@ -455,8 +471,8 @@ print("====================")
 print(batchX_placeholder.shape)
 print(batchY_placeholder.shape)
 
-print(inputs_series)
-print(labels_series)
+#print(inputs_series)
+#print(labels_series)
 
 print(init_state.shape)
 print("===============")
@@ -571,7 +587,6 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.pause(0.0001)
 
 
-
 x = X_train
 y = y_train
 _current_state = np.zeros((batch_size, state_size))
@@ -609,10 +624,8 @@ with tf.Session() as sess:
                 plot(loss_list, _predictions_series, batchX, batchY)
     #y1_pred = sess.run(predictions_series, feed_dict = {x:test2[0,:].reshape(-1,lag)})
     #y_predRNN[0] = sess.run(predictions_series, feed_dict={X: test2[0,:].reshape(-1,lag)}) 
-    ##y_predMLP[0] = MLP_model.predict(test2[0,:].reshape(-1,lag))
 
     #for k in range(1,leng):
-        ##y_predMLP2[k]     = MLP_model.predict(test2[k-1,:].reshape(-1,lag))
         #y_predRNN[k]     = sess.run(predictions_series, feed_dict={X: test2[k-1,:].reshape(-1,lag)}) 
         #test2[k,:(lag-1)] = test2[k-1,1:] 
         #test2[k,(lag-1)] = y_predRNN[k] 
@@ -628,16 +641,18 @@ plt.show()
 print(_predictions_series)
 print(_predictions_series.shape)
 
-'''
-print("+++++++++++++++++++++++ Simple RNN using Tensorflow API ++++++++++++++++++++++++++")
 
-'''
+
+
+#print("+++++++++++++++++++++++ Simple RNN using Tensorflow API ++++++++++++++++++++++++++")
+
+
 
 
 
 print("+++++++++++++++++++++++ GRU using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
-num_epochs = 10
+num_epochs = 2
 truncated_backprop_length = lag
 state_size = 10 #4
 num_classes = 1
@@ -700,8 +715,8 @@ print("====================")
 print(batchX_placeholder.shape)
 print(batchY_placeholder.shape)
 
-print(inputs_series)
-print(labels_series)
+#print(inputs_series)
+#print(labels_series)
 
 print(init_state.shape)
 print("===============")
@@ -818,7 +833,7 @@ total_loss = tf.reduce_sum(deltas)
 print(total_loss)
 
 train_step = tf.train.AdagradOptimizer(0.3).minimize(total_loss)
-print(train_step)
+#print(train_step)
 
 
 def plot(loss_list, predictions_series, batchX, batchY):
@@ -902,15 +917,16 @@ print(_predictions_series)
 print(_predictions_series.shape)
 
 
-'''
-print("+++++++++++++++++++++++ GRU using Tensorflow API ++++++++++++++++++++++++++")
 
-'''
+#print("+++++++++++++++++++++++ GRU using Tensorflow API ++++++++++++++++++++++++++")
+
+
+
 
 
 print("+++++++++++++++++++++++ LSTM using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
-num_epochs = 10
+num_epochs = 3
 truncated_backprop_length = lag
 state_size = 4
 num_classes = 1
@@ -993,6 +1009,7 @@ cell_state = tf.Variable(np.random.rand(batch_size, state_size), dtype=tf.float6
 states_series = []
 cell_series = []
 cell_series.append(cell_state)
+
 
 print("first layer")
 for current_input in inputs_series:
@@ -1172,7 +1189,11 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.draw()
     plt.pause(0.0001)
 
-'''
+
+
+
+
+
 x = X_train
 y = y_train
 _current_state = np.zeros((batch_size, state_size))
@@ -1228,7 +1249,7 @@ plt.show()
 #print(y1_pred)
 print(_predictions_series)
 print(_predictions_series.shape)
-'''
+
 
 
 '''
@@ -1238,7 +1259,7 @@ print("+++++++++++++++++++++++ LSTM using Tensorflow API +++++++++++++++++++++++
 
 
 
-print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
+#print("+++++++++++++++++++++++ CNN using First Principles in Tensorflow ++++++++++++++++++++++++++")
 
 # Train the model using the training sets
 '''
@@ -1255,6 +1276,7 @@ y_test = y_test.reshape(leng,1)
 print(y_test - y_predOLS)
 '''
 
+'''
 train_dataset = X_train 
 train_labels  = y_train
 test_dataset  = test2
@@ -1339,11 +1361,11 @@ with tf.Session(graph=graph) as session:
             print(message)
 
 
-
 '''
-print("+++++++++++++++++++++++ CNN using Tensorflow API ++++++++++++++++++++++++++")
 
-'''
+#print("+++++++++++++++++++++++ CNN using Tensorflow API ++++++++++++++++++++++++++")
+
+
 
 
 
